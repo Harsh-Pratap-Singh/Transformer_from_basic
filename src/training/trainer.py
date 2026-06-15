@@ -27,22 +27,31 @@ class Trainer:
         for batch_idx, (src_ids, tgt_ids) in enumerate(pbar):
             src_ids = src_ids.to(self.device)
             tgt_ids = tgt_ids.to(self.device)
-            # Shift target for teacher forcing: input = tgt_ids[:, :-1], target = tgt_ids[:, 1:]
-            # But our model expects full tgt_ids (with start token) and learns to predict next token.
-            # We'll use the whole tgt_ids as input and compute loss on all positions.
-            logits = self.model(src_ids, tgt_ids)
-            # Loss on all positions except padding
-            loss = self.criterion(logits.view(-1, logits.size(-1)), tgt_ids.view(-1))
-            mask = tgt_ids.view(-1) != self.tgt_tokenizer.pad_id
+
+            # Teacher forcing: decoder input = tgt_ids without last token
+            # target labels = tgt_ids without first token
+            dec_input = tgt_ids[:, :-1]
+            labels = tgt_ids[:, 1:]
+
+            logits = self.model(src_ids, dec_input,
+                                src_add_start=False, src_add_end=False,
+                                tgt_add_start=False, tgt_add_end=False)
+
+            loss = self.criterion(logits.view(-1, logits.size(-1)), labels.reshape(-1))
+            mask = labels.reshape(-1) != self.tgt_tokenizer.pad_id
             loss = loss.sum() / mask.sum()
+
             self.optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.training.gradient_clip)
             self.optimizer.step()
+
             total_loss += loss.item() * mask.sum().item()
             total_tokens += mask.sum().item()
+
             if (batch_idx + 1) % self.config.training.log_interval == 0:
                 pbar.set_postfix({'loss': loss.item()})
+
         return total_loss / total_tokens
 
     def validate(self):
@@ -53,12 +62,21 @@ class Trainer:
             for src_ids, tgt_ids in tqdm(self.val_loader, desc="Validation"):
                 src_ids = src_ids.to(self.device)
                 tgt_ids = tgt_ids.to(self.device)
-                logits = self.model(src_ids, tgt_ids)
-                loss = self.criterion(logits.view(-1, logits.size(-1)), tgt_ids.view(-1))
-                mask = tgt_ids.view(-1) != self.tgt_tokenizer.pad_id
+
+                dec_input = tgt_ids[:, :-1]
+                labels = tgt_ids[:, 1:]
+
+                logits = self.model(src_ids, dec_input,
+                                    src_add_start=False, src_add_end=False,
+                                    tgt_add_start=False, tgt_add_end=False)
+
+                loss = self.criterion(logits.view(-1, logits.size(-1)), labels.reshape(-1))
+                mask = labels.reshape(-1) != self.tgt_tokenizer.pad_id
                 loss = loss.sum() / mask.sum()
+
                 total_loss += loss.item() * mask.sum().item()
                 total_tokens += mask.sum().item()
+
         return total_loss / total_tokens
 
     def train(self):
