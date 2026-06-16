@@ -2,17 +2,19 @@ from typing import List, Set, Tuple
 
 def is_valid_tokens(sentence: str, vocab_set: Set[str]) -> bool:
     """Check all characters in sentence exist in vocab_set."""
+    # vocab_set includes all characters, but also special tokens? We only check characters.
+    # We'll assume vocab_set contains the normal character set without special tokens.
     return all(ch in vocab_set for ch in sentence)
 
 def is_valid_length(sentence: str, max_seq_len: int) -> bool:
     """Check if sentence length (including start/end) fits max_seq_len."""
     return len(sentence) < (max_seq_len - 1)  # -1 for end token
 
-def clean_sentences(sentences: List[str], vocab_set: Set[str], unk_token: str) -> List[str]:
-    """Replace unknown characters with unk_token."""
+def clean_sentences(sentences: List[str], vocab_set: Set[str], unk_char: str = "�") -> List[str]:
+    """Replace unknown characters with unk_char."""
     cleaned = []
     for sent in sentences:
-        new_sent = "".join(ch if ch in vocab_set else unk_token for ch in sent)
+        new_sent = "".join(ch if ch in vocab_set else unk_char for ch in sent)
         cleaned.append(new_sent)
     return cleaned
 

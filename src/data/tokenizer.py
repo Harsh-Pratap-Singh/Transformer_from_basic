@@ -1,7 +1,8 @@
 import torch
 from typing import List, Dict, Optional
 
-SPECIAL_TOKENS = ["<START>", "<UNK>", "<PAD>", "<END>"]
+# Use a single character for UNK to avoid splitting across multiple characters
+SPECIAL_TOKENS = ["<START>", "<PAD>", "<END>", "�"]
 
 class CharTokenizer:
     def __init__(self, chars: List[str], max_len: int = 300):
@@ -11,7 +12,7 @@ class CharTokenizer:
         self.itos: Dict[int, str] = {i: ch for i, ch in enumerate(self.vocab)}
         self.max_len = max_len
         self.start_id = self.stoi["<START>"]
-        self.unk_id = self.stoi["<UNK>"]
+        self.unk_id = self.stoi["�"]
         self.pad_id = self.stoi["<PAD>"]
         self.end_id = self.stoi["<END>"]
 
